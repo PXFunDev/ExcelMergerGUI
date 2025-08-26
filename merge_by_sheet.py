@@ -51,11 +51,15 @@ ExcelファイルをGUIで選択/ドラッグ&ドロップし、
 import os
 import sys
 import re
+from typing import Union
+from typing import Any
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, Label
+from tkinterdnd2 import DND_FILES, TkinterDnD
+
 
 # --- tkinterdnd2 が無くても起動できるようにする（DnDなしで動作） ---
 DND_AVAILABLE = True
@@ -94,7 +98,7 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
     - header_row: pandas.read_excel の header に渡す値（0=1行目をヘッダー）
     - out_path: 出力先 .xlsx
     """
-    buckets: dict[str, list[pd.DataFrame]] = {}
+    buckets: dict[str, list[Any]] = {}
 
     for f in files:
         try:
@@ -105,20 +109,20 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
                     wl = [s.strip() for s in sheet_whitelist if s.strip()]
                     target_sheets = [s for s in xf.sheet_names if s in wl]
 
-                for s in target_sheets:
+                for sheet in target_sheets:
                     try:
                         # 文字列で読み込み → 型ブレ最小化（必要ならあとで変換）
-                        df = pd.read_excel(xf, sheet_name=s, header=header_row, dtype=str)
+                        df = pd.read_excel(xf, sheet_name=sheet, header=header_row, dtype=str)
                         if df.empty:
                             continue
                         # 余計な Unnamed: 列は削除（よくある空白列）
                         df = df.loc[:, ~df.columns.astype(str).str.match(r"^Unnamed")]
                         # 追跡列を付与
                         df["_source_file"] = f.name
-                        df["_source_sheet"] = s
-                        buckets.setdefault(s, []).append(df)
+                        df["_source_sheet"] = sheet
+                        buckets.setdefault(str(sheet), []).append(df)
                     except Exception as e:
-                        print(f"[WARN] 読み込み失敗: {f.name} / {s}: {e}")
+                        print(f"[WARN] 読み込み失敗: {f.name} / {sheet}: {e}")
                         continue
         except Exception as e:
             print(f"[WARN] 開けませんでした: {f.name}: {e}")
@@ -159,47 +163,47 @@ class ExcelMergerGUI:
 
     # ---- 画面構築 ----
     def _build_widgets(self):
-        pad = {"padx": 8, "pady": 6}
+        pad: dict[str, Any] = {"padx": 8, "pady": 6}
 
         # 上段：ファイル操作
         frm_files = ttk.LabelFrame(self.root, text="ファイル")
-        frm_files.pack(fill="both", expand=False, **pad)
+        frm_files.pack(fill="both", expand=False, **pad) 
 
         btn_add = ttk.Button(frm_files, text="ファイルを追加", command=self.on_add_files)
-        btn_add.grid(row=0, column=0, **pad)
+        btn_add.grid(row=0, column=0, **pad) 
 
         btn_up = ttk.Button(frm_files, text="↑ 上へ", command=self.on_move_up)
-        btn_up.grid(row=0, column=1, **pad)
+        btn_up.grid(row=0, column=1, **pad) 
 
         btn_down = ttk.Button(frm_files, text="↓ 下へ", command=self.on_move_down)
-        btn_down.grid(row=0, column=2, **pad)
+        btn_down.grid(row=0, column=2, **pad) 
 
         btn_del = ttk.Button(frm_files, text="選択削除", command=self.on_delete_selected)
-        btn_del.grid(row=0, column=3, **pad)
+        btn_del.grid(row=0, column=3, **pad) 
 
         btn_clear = ttk.Button(frm_files, text="全削除", command=self.on_clear)
-        btn_clear.grid(row=0, column=4, **pad)
+        btn_clear.grid(row=0, column=4, **pad) 
 
         # DnDヒント
         lbl_hint = ttk.Label(frm_files, text="ここにドラッグ＆ドロップでも追加できます")
-        lbl_hint.grid(row=0, column=5, sticky="w", **pad)
+        lbl_hint.grid(row=0, column=5, sticky="w", **pad) 
 
         # ファイルリスト
         self.lst = tk.Listbox(frm_files, selectmode=tk.EXTENDED, height=8)
-        self.lst.grid(row=1, column=0, columnspan=6, sticky="nsew", **pad)
+        self.lst.grid(row=1, column=0, columnspan=6, sticky="nsew", **pad) 
         frm_files.grid_columnconfigure(5, weight=1)
         frm_files.grid_rowconfigure(1, weight=1)
 
         # DnD 対応（tkinterdnd2 があれば）
         if DND_AVAILABLE and isinstance(self.root, TkinterDnD.Tk):
-            self.lst.drop_target_register(DND_FILES)
-            self.lst.dnd_bind("<<Drop>>", self.on_drop)
+            self.lst.drop_target_register(DND_FILES) # type: ignore
+            self.lst.dnd_bind("<<Drop>>", self.on_drop) # type: ignore
         else:
             lbl_hint.configure(text="（DnD無効: tkinterdnd2 が未導入 or 非対応環境）")
 
         # 中段：設定
         frm_opts = ttk.LabelFrame(self.root, text="設定")
-        frm_opts.pack(fill="x", expand=False, **pad)
+        frm_opts.pack(fill="x", expand=False, **pad) 
 
         ttk.Label(frm_opts, text="結合シート名（カンマ区切り。空なら全シート）").grid(row=0, column=0, sticky="w", **pad)
         self.ent_whitelist = ttk.Entry(frm_opts, width=60)
