@@ -5,18 +5,18 @@ Excelファイル結合ツール
 
 プログラム名: merge_by_sheet.py
 
-作成者  : PSC　平野 翔士
-作成日  : 2025年4月9日
-説明    : このプログラムは、〇〇を実行するためのものです。
+作成者  : PSC 平野 翔士
+作成日  : 2025年8月25日
+説明    : このプログラムは、Excelファイルを同名シートごとに縦結合するためのものです。
 使用方法: プログラムを実行
 
-最終更新日: 2025年4月10日
-最終更新者: PSC　平野 翔士
+最終更新日: 2025年8月25日
+最終更新者: PSC 平野 翔士
 
 変更履歴:
 日付        バージョン    変更内容
 ----------  ----------  -----------------------------------
-2025/04/09  1.0         初版作成
+2025/08/25  1.0         初版作成
 
 --------------------------------------------
 
@@ -48,16 +48,13 @@ ExcelファイルをGUIで選択/ドラッグ&ドロップし、
 - 追跡列 _source_file, _source_sheet を付与
 """
 
-import os
-import sys
 import re
-from typing import Union
 from typing import Any
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, Label
+from tkinter import ttk, filedialog, messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 
