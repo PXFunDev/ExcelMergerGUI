@@ -1,6 +1,7 @@
 # 無視するフォルダ
-/test/
-/old/
+/.test/
+/.old/
+/.vscode/
 
 # 一般的なPythonキャッシュ・出力
 __pycache__/
