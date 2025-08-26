@@ -1,0 +1,14 @@
+# 無視するフォルダ
+/test/
+/old/
+
+# 一般的なPythonキャッシュ・出力
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.bak
+*.tmp
+*.log
+.DS_Store
