@@ -119,8 +119,6 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
                         df = pd.read_excel(xf, sheet_name=sheet, header=header_row, dtype=str)
                         if df.empty:
                             continue
-                        # 余計な Unnamed: 列は削除（よくある空白列）
-                        df = df.loc[:, ~df.columns.astype(str).str.match(r"^Unnamed")]
                         # 追跡列を付与
                         df["_source_file"] = f.name
                         df["_source_sheet"] = sheet
