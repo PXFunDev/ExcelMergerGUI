@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 ============================================
 Excelファイル結合ツール
@@ -47,15 +48,17 @@ ExcelファイルをGUIで選択/ドラッグ&ドロップし、
 - 同名シートごとに列ユニオンで縦結合（欠損は空欄）
 - 追跡列 _source_file, _source_sheet を付与
 """
-
-import re
-from typing import Any
-import pandas as pd
-from pathlib import Path
-from datetime import datetime
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from tkinterdnd2 import DND_FILES, TkinterDnD
+#-----------------------------------------------
+# Livelary Import
+#-----------------------------------------------
+import  re
+from    typing      import  Any
+import  pandas      as      pd
+from    pathlib     import  Path
+from    datetime    import  datetime
+import  tkinter     as      tk
+from    tkinter     import  ttk, filedialog, messagebox
+from    tkinterdnd2 import  DND_FILES, TkinterDnD
 
 
 # --- tkinterdnd2 が無くても起動できるようにする（DnDなしで動作） ---
@@ -66,13 +69,15 @@ except Exception:
     DND_AVAILABLE = False
 
 
-# -------------------------------
+#-----------------------------------------------
 # ユーティリティ関数
-# -------------------------------
+#-----------------------------------------------
+# Excelファイルかどうかのチェック
 def is_excel_file(path: str) -> bool:
     """対応拡張子チェック（基本は xlsx/xlsm/xls だけに絞るのが安定）"""
     return str(path).lower().endswith((".xlsx", ".xlsm", ".xls"))
 
+# ファイル名のみ取得（スペース・日本語対応）
 def parse_dnd_paths(dnd_payload: str) -> list[str]:
     """
     DnDで受け取る文字列をファイルパス配列へ。
@@ -84,9 +89,10 @@ def parse_dnd_paths(dnd_payload: str) -> list[str]:
     return clean
 
 
-# -------------------------------
+#-----------------------------------------------
 # 結合ロジック（テストしやすいようGUIから分離）
-# -------------------------------
+#-----------------------------------------------
+# Excelファイルを同名シートごとに縦結合して保存
 def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: int, out_path: Path) -> None:
     """
     指定ファイル群を、同名シートごとに縦結合して out_path に保存する。
@@ -95,8 +101,9 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
     - header_row: pandas.read_excel の header に渡す値（0=1行目をヘッダー）
     - out_path: 出力先 .xlsx
     """
-    buckets: dict[str, list[Any]] = {}
+    buckets: dict[str, list[Any]] = {} #辞書型。キー=シート名、値=DataFrameリスト 
 
+    # 各ファイルを処理
     for f in files:
         try:
             with pd.ExcelFile(f) as xf:
@@ -118,13 +125,16 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
                         df["_source_file"] = f.name
                         df["_source_sheet"] = sheet
                         buckets.setdefault(str(sheet), []).append(df)
+                    # シートが読み込めなかった
                     except Exception as e:
                         print(f"[WARN] 読み込み失敗: {f.name} / {sheet}: {e}")
                         continue
+        # Excelファイルが開けなかった
         except Exception as e:
             print(f"[WARN] 開けませんでした: {f.name}: {e}")
             continue
-
+        
+    # どのシートも読み込めなかった
     if not buckets:
         raise RuntimeError("どのシートも読み込めませんでした。ホワイトリスト・ヘッダー設定を確認してください。")
 
@@ -142,12 +152,14 @@ def merge_by_sheet(files: list[Path], sheet_whitelist: list[str], header_row: in
                 continue
 
 
-# -------------------------------
+#-----------------------------------------------
 # GUI 本体
-# -------------------------------
+#-----------------------------------------------
+# クラス：ExcelMergerGUI
 class ExcelMergerGUI:
     """画面・イベント・結合起動を司るクラス"""
 
+    # コンストラクタ
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Excel Merger - 同名シート縦結合")
@@ -155,34 +167,35 @@ class ExcelMergerGUI:
 
         # ファイル格納（順序を保持）
         self.files: list[Path] = []
-
+        # GUI要素の構築
         self._build_widgets()
 
     # ---- 画面構築 ----
     def _build_widgets(self):
         pad: dict[str, Any] = {"padx": 8, "pady": 6}
 
-        # 上段：ファイル操作
+        # === 上段：ファイル操作 ===
+        # ファイル操作フレーム
         frm_files = ttk.LabelFrame(self.root, text="ファイル")
         frm_files.pack(fill="both", expand=False, **pad) 
-
+        # ファイル追加ボタン
         btn_add = ttk.Button(frm_files, text="ファイルを追加", command=self.on_add_files)
         btn_add.grid(row=0, column=0, **pad) 
-
+        # ファイル並べ替え（↑上へ移動）
         btn_up = ttk.Button(frm_files, text="↑ 上へ", command=self.on_move_up)
         btn_up.grid(row=0, column=1, **pad) 
-
+        # ファイル並べ替え（↓下へ移動）
         btn_down = ttk.Button(frm_files, text="↓ 下へ", command=self.on_move_down)
         btn_down.grid(row=0, column=2, **pad) 
-
+        # ファイル削除（選択削除）
         btn_del = ttk.Button(frm_files, text="選択削除", command=self.on_delete_selected)
         btn_del.grid(row=0, column=3, **pad) 
-
+        # ファイル削除（全削除）
         btn_clear = ttk.Button(frm_files, text="全削除", command=self.on_clear)
         btn_clear.grid(row=0, column=4, **pad) 
 
         # DnDヒント
-        lbl_hint = ttk.Label(frm_files, text="ここにドラッグ＆ドロップでも追加できます")
+        lbl_hint = ttk.Label(frm_files, text="↓ここにドラッグ＆ドロップでも追加できます")
         lbl_hint.grid(row=0, column=5, sticky="w", **pad) 
 
         # ファイルリスト
@@ -198,35 +211,41 @@ class ExcelMergerGUI:
         else:
             lbl_hint.configure(text="（DnD無効: tkinterdnd2 が未導入 or 非対応環境）")
 
-        # 中段：設定
+        # === 中段：設定 ===
+        # 設定項目
         frm_opts = ttk.LabelFrame(self.root, text="設定")
         frm_opts.pack(fill="x", expand=False, **pad) 
 
+        # 結合シート名の設定（カンマ区切り）
         ttk.Label(frm_opts, text="結合シート名（カンマ区切り。空なら全シート）").grid(row=0, column=0, sticky="w", **pad)
         self.ent_whitelist = ttk.Entry(frm_opts, width=60)
         self.ent_whitelist.grid(row=0, column=1, columnspan=3, sticky="we", **pad)
 
-        ttk.Label(frm_opts, text="ヘッダー行番号（0=1行目）").grid(row=1, column=0, sticky="w", **pad)
+        # ヘッダー行番号の設定（0=ヘッダーなし、1=1行目がヘッダー、2=2行目がヘッダー...）
+        ttk.Label(frm_opts, text="ヘッダー行番号（0=ヘッダーなし、1=1行目、2=2行目...）").grid(row=1, column=0, sticky="w", **pad)
         self.ent_header = ttk.Entry(frm_opts, width=10)
         self.ent_header.insert(0, "0")
         self.ent_header.grid(row=1, column=1, sticky="w", **pad)
 
+        # 保存先
         ttk.Label(frm_opts, text="保存先").grid(row=2, column=0, sticky="w", **pad)
         self.out_var = tk.StringVar()
         self.ent_out = ttk.Entry(frm_opts, textvariable=self.out_var, width=60)
         self.ent_out.grid(row=2, column=1, sticky="we", **pad)
-
+        # 保存先参照ボタン
         btn_browse = ttk.Button(frm_opts, text="参照…", command=self.on_browse_out)
         btn_browse.grid(row=2, column=2, **pad)
-
+        # 保存先既定値ボタン
         frm_opts.grid_columnconfigure(1, weight=1)
 
-        # 下段：実行
+        # === 下段：実行 ===
+        # 実行フレーム
         frm_run = ttk.Frame(self.root)
-        frm_run.pack(fill="x", expand=False, **pad)
-
-        self.btn_run = ttk.Button(frm_run, text="結合を実行", command=self.on_run)
-        self.btn_run.pack(side="right")
+        frm_run.pack(fill="x", side="top", expand=False, **pad)
+        # 実行ボタン
+        self.btn_run = ttk.Button(frm_run, text="結合を実行", command=self.on_run, width=30) 
+        self.btn_run.pack(side="top")
+        
 
         # 既定の保存名をセット
         self._set_default_outname()
@@ -239,10 +258,11 @@ class ExcelMergerGUI:
         )
         self._add_paths(paths)
 
+    # ドラッグ＆ドロップでファイル追加
     def on_drop(self, event):
         paths = parse_dnd_paths(event.data)
         self._add_paths(paths)
-
+    # インベントリにファイルを追加
     def _add_paths(self, paths):
         added = 0
         for p in paths:
@@ -254,7 +274,7 @@ class ExcelMergerGUI:
                     added += 1
         if added == 0 and paths:
             messagebox.showwarning("警告", "Excelファイル（.xlsx/.xlsm/.xls）のみ追加できます。")
-
+    # 選択行を一つ上へ
     def on_move_up(self):
         # 選択行を一つ上へ
         sel = list(self.lst.curselection())
@@ -271,8 +291,8 @@ class ExcelMergerGUI:
         # 再選択
         self.lst.selection_clear(0, tk.END)
         for i in [max(0, s-1) for s in sel]:
-            self.lst.selection_set(i)
-
+            self.lst.selection_set(i)            
+    # 選択行を一つ下へ
     def on_move_down(self):
         # 選択行を一つ下へ
         sel = list(self.lst.curselection())
@@ -288,17 +308,17 @@ class ExcelMergerGUI:
         self.lst.selection_clear(0, tk.END)
         for i in [min(self.lst.size()-1, s+1) for s in sel]:
             self.lst.selection_set(i)
-
+    # 選択行を削除
     def on_delete_selected(self):
         sel = sorted(self.lst.curselection(), reverse=True)
         for i in sel:
             del self.files[i]
             self.lst.delete(i)
-
+    # 全行を削除
     def on_clear(self):
         self.files.clear()
         self.lst.delete(0, tk.END)
-
+    # 保存先参照
     def on_browse_out(self):
         p = filedialog.asksaveasfilename(
             title="保存先を指定",
@@ -307,21 +327,22 @@ class ExcelMergerGUI:
         )
         if p:
             self.out_var.set(p)
-
+    # デフォルトの出力ファイル名をセット
     def _set_default_outname(self):
         stamp = datetime.now().strftime("%Y%m%d_%H%M")
-        self.out_var.set(str(Path.cwd() / f"merged_by_sheet_{stamp}.xlsx"))
-
+        self.out_var.set(str(Path.cwd() / f"output_{stamp}.xlsx"))
+    # 実行ボタン押下
     def on_run(self):
         if not self.files:
             messagebox.showwarning("警告", "結合対象ファイルを追加してください。")
             return
 
+        # 読み取りシート名の設定
         # ホワイトリスト（カンマ区切り）→ リスト化
         wl_raw = self.ent_whitelist.get().strip()
         sheet_whitelist = [s.strip() for s in wl_raw.split(",")] if wl_raw else []
 
-        # ヘッダー行
+        # ヘッダー行の設定
         try:
             header_row = int(self.ent_header.get().strip() or "0")
             if header_row < 0:
@@ -330,6 +351,7 @@ class ExcelMergerGUI:
             messagebox.showerror("エラー", "ヘッダー行番号は0以上の整数で指定してください。")
             return
 
+        # 出力ファイル名の設定
         out = self.out_var.get().strip()
         if not out:
             messagebox.showwarning("警告", "保存先を指定してください。")
@@ -347,9 +369,9 @@ class ExcelMergerGUI:
             self.btn_run.configure(state="normal")
 
 
-# -------------------------------
+#-----------------------------------------------
 # エントリーポイント
-# -------------------------------
+#-----------------------------------------------
 def main():
     # tkinterdnd2 が使えるなら DnD版のTk を、なければ通常Tk
     if DND_AVAILABLE:
